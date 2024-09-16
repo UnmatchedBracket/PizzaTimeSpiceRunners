@@ -99,6 +99,7 @@ customhud.SetupFont("PTFNT", -1, 4)
 customhud.SetupFont("SCRPT", -2, 4)
 customhud.SetupFont("COMBO", -1, 4)
 customhud.SetupFont("SMNPT", -1, 4)
+customhud.SetupFont("STKPT", -1, 4)
 customhud.SetupFont("PTLAP")
 
 dofile "main_game.lua"
@@ -162,10 +163,11 @@ dofile "HUD/hud_score.lua"
 dofile "HUD/hud_time.lua"
 dofile "HUD/hud_hurryup.lua"
 dofile "HUD/hud_pfviewpoint.lua"
--- dofile "HUD/hud_titlecards.lua" (disabled)
 
 dofile "discord_botleaderboard.lua"
 
+dofile "Gimmicks/exitsign_init.lua"
+dofile "Gimmicks/exitsign_thinkers.lua"
 dofile "Gimmicks/pizzaportal.lua"
 dofile "Gimmicks/deathring.lua"
 dofile "Gimmicks/alivedustdevil.lua"
@@ -174,14 +176,14 @@ dofile "Gimmicks/johnpillar.lua"
 dofile "Gimmicks/doors.lua"
 dofile "Gimmicks/keys.lua"
 dofile "Gimmicks/treasures.lua"
+dofile "Gimmicks/escapeclock.lua"
+
+dofile "VFX/bump.lua"
 
 dofile "InbuiltModeScripts/elimination.lua"
 dofile "InbuiltModeScripts/juggernaut.lua"
 
 dofile "Hooks/intermission.lua"
-
-dofile "Exit Signs/exitsign_init.lua"
-dofile "Exit Signs/exitsign_thinkers.lua"
 
 dofile "Compatibility/C_Surge.lua"
 dofile "Compatibility/C_Skip.lua"
