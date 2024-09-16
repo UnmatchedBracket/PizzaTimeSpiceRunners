@@ -517,6 +517,10 @@ addHook("MobjThinker", function(mobj)
 			speed = FixedMul($, newspeed)
 		end
 		
+		if mobj.pfspeedmulti then -- for hooks
+			speed = FixedMul($, mobj.pfspeedmulti)
+		end
+		
 		local val = CV_PTSR.aileash.value
 		if not multiplayer then
 			val = min($, 5000*FU) --prevents despawning

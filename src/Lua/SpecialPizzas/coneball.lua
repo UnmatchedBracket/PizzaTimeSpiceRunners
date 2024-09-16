@@ -172,6 +172,7 @@ PTSR_AddHook("pfprestunthink", function (pizza)
 
         return true
     elseif isConeball(pizza) then
+        pizza.pfspeedmulti = 5*FU/3
         if pizza.state == S_CONEBALL_ATTACK then
             pizza.momx = 0
             pizza.momy = 0
