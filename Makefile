@@ -8,6 +8,10 @@ buildslim:
 	rm -f build.pk3
 	cd src; zip -r9 ../build.pk3 * -x "Music/*" -x "Maps/*"
 
+buildassets:
+	rm -f PTSRLargeAssets.pk3
+	cd src; zip -r9 ../PTSRLargeAssets.pk3 Music/* Maps/*
+
 run:
 	cd ~/.srb2/; ./lsdl2srb2 $(SRB2OPT) -file $(CURDIR)/build.pk3
 

@@ -1,4 +1,4 @@
-freeslot("MT_CONEBALL_HAIL", "S_CONEBALL_HAIL", "S_CONEBALL_HAIL_LAND")
+freeslot("MT_CONEBALL_HAIL", "S_CONEBALL_HAIL", "S_CONEBALL_HAIL_LAND", "S_CONEBALL_PARTICLE")
 
 mobjinfo[MT_CONEBALL_HAIL] = {
 	spawnstate = S_CONEBALL_HAIL,
@@ -6,7 +6,7 @@ mobjinfo[MT_CONEBALL_HAIL] = {
 	deathstate = S_NULL,
 	radius = 30*FU,
 	height = 30*FU,
-	flags = MF_NOCLIP|MF_NOCLIPHEIGHT|MF_PAIN
+	flags = MF_NOCLIP|MF_NOCLIPHEIGHT|MF_SPECIAL
 }
 states[S_CONEBALL_HAIL] = {
     sprite = SPR_CONB,
@@ -21,6 +21,12 @@ states[S_CONEBALL_HAIL_LAND] = {
     frame = Z+1+4,
     tics = -1,
     nextstate = S_CONEBALL_HAIL_LAND
+}
+states[S_CONEBALL_PARTICLE] = {
+    sprite = SPR_CONB,
+    frame = Z+11+G, -- lowercase g frame
+    tics = TICRATE,
+    nextstate = S_NULL
 }
 
 local STABSPEED = 1
@@ -86,6 +92,21 @@ PTSR_AddHook("preparry", function (playermo, pizza)
     end
 end)
 
+local function stabby(pizza)
+    for p in players.iterate do
+        if (
+            p and p.valid and p.mo and p.mo.valid
+            and PTSR.PlayerIsChasable(p)
+            and R_PointToDist2(
+                R_PointToDist2(p.mo.x, p.mo.y, pizza.x, pizza.y), p.mo.z+p.mo.height/2,
+                0, pizza.z+pizza.height/2
+            ) < 92*FU
+        ) then
+            P_KillMobj(p.mo, pizza)
+        end
+    end
+end
+
 PTSR_AddHook("pfprestunthink", function (pizza)
     if isConeballingOnSomeone(pizza) then
         local target = pizza.pizza_target
@@ -123,7 +144,7 @@ PTSR_AddHook("pfprestunthink", function (pizza)
             modulo = 2
         end
         if cone.tics < 120 and cone.tics % modulo == 0 then
-            local randr = P_RandomRange(50, 600)
+            local randr = P_RandomRange(50, 400)
             local randx = P_RandomRange(-randr, randr)*FU
             local randy = P_RandomRange(-randr, randr)*FU
             local hail = P_SpawnMobjFromMobj(
@@ -136,7 +157,7 @@ PTSR_AddHook("pfprestunthink", function (pizza)
             hail.fuse = TICRATE*5
             hail.momx = 3*target.momx/2 + -randx/80
             hail.momy = 3*target.momy/2 + -randy/80
-            hail.momz = P_MobjFlip(target)*FU*-60
+            hail.momz = P_MobjFlip(target)*FU*-120
             -- hail.spritexscale = $*2
             -- hail.spriteyscale = $*2
             hail.target = target
@@ -148,18 +169,7 @@ PTSR_AddHook("pfprestunthink", function (pizza)
         end
 
         if cone.tics >= (150+9*STABSPEED) and cone.tics < (150+18*STABSPEED) then
-            for p in players.iterate do
-                if (
-                    p and p.valid and p.mo and p.mo.valid
-                    and PTSR.PlayerIsChasable(p)
-                    and R_PointToDist2(
-                        R_PointToDist2(p.mo.x, p.mo.y, pizza.x, pizza.y), p.mo.z,
-                        0, pizza.z
-                    ) < 85*FU
-                ) then
-                    P_KillMobj(p.mo, pizza)
-                end
-            end
+            stabby(pizza)
         end
 
         if cone.tics > 155 and pizza.state != S_CONEBALL_ATTACK then
@@ -177,6 +187,9 @@ PTSR_AddHook("pfprestunthink", function (pizza)
             pizza.momx = 0
             pizza.momy = 0
             pizza.momz = 0
+            if pizza.frame >= J and pizza.frame < S then
+                stabby(pizza)
+            end
             return true -- finish the attack
         end
         if pizza.state != S_CONEBALL then
@@ -208,3 +221,49 @@ addHook("MobjThinker", function (mo)
         mo.momz = -P_MobjFlip(mo)*FU/2
     end
 end, MT_CONEBALL_HAIL)
+
+local MAXICECREAM = 75
+local SOFTMAXICECREAM = 50
+local MAXSLOW = 8*FU/100
+addHook("TouchSpecial", function (special, toucher)
+    toucher.coneballIcecreamed = min(($ or 0)+2, MAXICECREAM)
+    return true
+end, MT_CONEBALL_HAIL)
+
+addHook("PlayerThink", function (p)
+    if (
+        p.valid and p.mo and p.mo.valid
+        and p.mo.coneballIcecreamed
+        and p.mo.coneballIcecreamed > 0
+    ) then
+        if not PTSR.PlayerIsChasable(p) then
+            p.mo.coneballIcecreamed = 0
+            return
+        end
+
+        local mult = FU - (p.mo.coneballIcecreamed*MAXSLOW/MAXICECREAM)
+        print(p.mo.coneballIcecreamed .. " icecream")
+        p.mo.momx = FixedMul($, mult)
+        p.mo.momy = FixedMul($, mult)
+        -- p.mo.momz = FixedMul($, mult) -- this feels weird and also breaks springs
+
+        local c = P_RandomRange(1, p.mo.coneballIcecreamed)/5
+        local rdfu = p.mo.radius/p.mo.scale
+        for i = 1,c do
+            local particle = P_SpawnMobjFromMobj(
+                p.mo,
+                P_RandomRange(-rdfu, rdfu)*FU,
+                P_RandomRange(-rdfu, rdfu)*FU,
+                P_RandomRange(0, p.mo.height/p.mo.scale)*FU,
+                MT_THOK
+            )
+            particle.state = S_CONEBALL_PARTICLE
+            particle.fuse = -1
+            particle.flags = $ & ~MF_NOGRAVITY
+        end
+
+        if leveltime % 7 == 0 or p.mo.coneballIcecreamed > SOFTMAXICECREAM then
+            p.mo.coneballIcecreamed = $ - 1
+        end
+    end
+end)
