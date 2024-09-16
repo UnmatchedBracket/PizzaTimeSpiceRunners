@@ -33,7 +33,8 @@ PTSR.PFMaskData = {
 		sound = sfx_coneba,
 		emoji = ":candy:",
 		aiselectable = true,
-		tagcolor = SKINCOLOR_MAGENTA
+		tagcolor = SKINCOLOR_MAGENTA,
+		special = "coneball"
 	},
 	{
 		name = "Eggman",
@@ -153,17 +154,22 @@ function PTSR:RNGPizzaTP(pizza, uselaugh)
 		if not peppino.ptsr.pizzaface and (peppino.mo and peppino.mo.valid) and
 		not peppino.spectator and not peppino.ptsr.outofgame and (peppino.playerstate ~= PST_DEAD)
 		and not peppino.quittime and PTSR_DoHook("pfplayertpfind", pizza, player) ~= false 
-		and not peppino.ptsr.treasure_got then
+		and not peppino.ptsr.treasure_got
+		and not peppino.mo.pf_tele_delay
+		then
 			table.insert(peppinos, #peppino)
 		end
 	end
 
-	local chosen_peppinonum = P_RandomRange(1,#peppinos) -- random entry in table
-	local chosen_peppino = peppinos[chosen_peppinonum] -- get the chosen value in table
-	local peppino_pmo = players[chosen_peppino].realmo
-	pizza.next_pfteleport = peppino_pmo -- next player object (mobj_t) to teleport to
 
 	if #peppinos > 0 then
+		local chosen_peppinonum = P_RandomRange(1,#peppinos) -- random entry in table
+		local chosen_peppino = peppinos[chosen_peppinonum] -- get the chosen value in table
+		local peppino_pmo = players[chosen_peppino].realmo
+		pizza.next_pfteleport = peppino_pmo -- next player object (mobj_t) to teleport to
+
+
+		pizza.next_pfteleport.pf_tele_delay = 10
 		if pizza.player then -- If Real Player
 			local player = pizza.player
 
