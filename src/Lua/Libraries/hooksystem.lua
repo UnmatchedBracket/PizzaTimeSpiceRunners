@@ -1,4 +1,5 @@
 local hooks = {}
+hooks.preparry = {}
 hooks.onparry = {}
 hooks.canparry = {}
 hooks.onlap = {}
@@ -12,6 +13,7 @@ hooks.onparried = {}
 hooks.ongameend = {}
 hooks.pfthink = {}
 hooks.pfprestunthink = {}
+hooks.pfpredamage = {}
 hooks.pfdamage = {}
 hooks.pfteleport = {}
 hooks.pfplayerfind = {}

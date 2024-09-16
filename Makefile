@@ -4,14 +4,15 @@ build:
 	rm -f build.pk3
 	cd src; zip -r9 ../build.pk3 *
 
-buildnomusic:
+buildslim:
 	rm -f build.pk3
-	cd src; zip -r9 ../build.pk3 * -x "Music/*"
+	cd src; zip -r9 ../build.pk3 * -x "Music/*" -x "Maps/*"
 
 run:
 	cd ~/.srb2/; ./lsdl2srb2 $(SRB2OPT) -file $(CURDIR)/build.pk3
 
 buildrun: build run
+buildslimrun: buildslim run
 
 dualrun:
 	cd ~/.srb2/; ./lsdl2srb2 $(SRB2OPT) -server -file $(CURDIR)/build.pk3 & ./lsdl2srb2 $(SRB2OPT) -connect localhost -file $(CURDIR)/build.pk3

@@ -41,7 +41,7 @@ states[S_CONEBALL] = {
     sprite = SPR_CONB,
     frame = FF_ANIMATE|FF_FULLBRIGHT|A,
     tics = -1,
-    var1 = H,
+    var1 = P,
     var2 = 2,
     nextstate = S_CONEBALL
 }
@@ -186,3 +186,5 @@ dofile "Exit Signs/exitsign_thinkers.lua"
 dofile "Compatibility/C_Surge.lua"
 dofile "Compatibility/C_Skip.lua"
 dofile "Compatibility/C_Mach.lua"
+
+dofile "SpecialPizzas/coneball.lua"

@@ -319,8 +319,9 @@ addHook("PlayerThink", function(player)
 				searchBlockmap("objects", function(refmobj, foundmobj)
 					if R_PointToDist2(foundmobj.x, foundmobj.y, pmo.x, pmo.y) < real_range 
 					and abs(foundmobj.z-pmo.z) < CV_PTSR.parry_height.value then
-						if _isPF(foundmobj) or foundmobj.flags & MF_ENEMY
-						or (foundmobj.type == MT_PLAYER) then
+						if (_isPF(foundmobj) or foundmobj.flags & MF_ENEMY
+						or (foundmobj.type == MT_PLAYER))
+						and not PTSR_DoHook("preparry", pmo, foundmobj) then
 							if foundmobj.type == MT_PLAYER then
 								if foundmobj.player and foundmobj.player.valid then	
 									if not foundmobj.player.ptsr.pizzaface then

@@ -327,6 +327,10 @@ addHook("TouchSpecial", function(special, toucher)
 		if not PTSR.PlayerIsChasable(player) then
 			return true
 		end
+
+		if PTSR_DoHook("pfpredamage", toucher, special) then
+			return true
+		end
 	
 		if player.powers[pw_shield] & SH_FORCE then
 			PTSR:ForceShieldParry(toucher, special)
@@ -337,7 +341,7 @@ addHook("TouchSpecial", function(special, toucher)
 			return true
 		end
 		
-		if PTSR_DoHook("pfdamage", toucher, special) == true then
+		if PTSR_DoHook("pfdamage", toucher, special) then
 			return true
 		end
 		
@@ -437,7 +441,9 @@ addHook("MobjThinker", function(mobj)
 
 	if not PTSR.pizzatime then return end
 	
-	PTSR_DoHook("pfprestunthink", mobj)
+	if PTSR_DoHook("pfprestunthink", mobj) then
+		return
+	end
 	
 	if mobj.pfstuntime then
 		mobj.pfstuntime = $ - 1
@@ -461,7 +467,9 @@ addHook("MobjThinker", function(mobj)
 	end
 	
 	PF_FindNewPlayer(mobj)
-	PTSR_DoHook("pfthink", mobj)
+	if PTSR_DoHook("pfthink", mobj) then
+		return
+	end
 	
 	if mobj.pizza_target and mobj.pizza_target.valid and mobj.pizza_target.health and mobj.pizza_target.player and mobj.pizza_target.player.valid and
 	PTSR.PlayerIsChasable(mobj.pizza_target.player) then
