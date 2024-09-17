@@ -65,6 +65,14 @@ states[S_CONEBALL_DETRANSFORM] = {
     nextstate = S_CONEBALL
 }
 
+local PHASE = {
+    STARTUP = -1,
+    TRANSFORM = 0,
+    HAIL = 1,
+    DETRANSFORM = 2,
+    STAB = 3
+}
+
 
 local function isConeball(pizza)
     return PTSR.PFMaskData[pizza.pizzastyle or 1].special == "coneball"
@@ -85,7 +93,9 @@ PTSR_AddHook("pfpredamage", function (playermo, pizza)
         if not playermo.gettingConeballedOn then
             playermo.gettingConeballedOn = {
                 pizza = pizza,
-                tics = 0
+                tics = 0,
+                phase = PHASE.STARTUP,
+                hoverdist = 0
             }
         elseif playermo.gettingConeballedOn.pizza != pizza then
             PTSR.DoParry(playermo, pizza)
@@ -101,6 +111,7 @@ PTSR_AddHook("preparry", function (playermo, pizza)
 end)
 
 local function stabby(pizza)
+    if CV_PTSR.nuhuh.value then return end
     for p in players.iterate do
         if (
             p and p.valid and p.mo and p.mo.valid
@@ -123,14 +134,85 @@ PTSR_AddHook("pfprestunthink", function (pizza)
             return
         end
         local cone = target.gettingConeballedOn
+        if cone.phase == PHASE.STARTUP then
+            cone.phase = PHASE.TRANSFORM
+            if PTSR.timeover and P_RandomChance(FU/2) then
+                -- jump to stabbing
+                cone.phase = PHASE.DETRANSFORM
+            end
+        end
         cone.tics = $ + 1
+        print(cone.phase)
+        if cone.phase == PHASE.TRANSFORM then
+            if pizza.state == S_CONEBALL_PINK then
+                cone.phase = PHASE.HAIL
+                cone.tics = 0
+            elseif pizza.state ~= S_CONEBALL_TRANSFORM then
+                pizza.state = S_CONEBALL_TRANSFORM
+            end
+        elseif cone.phase == PHASE.HAIL then
+            local modulo = 3
+            if PTSR.timeover then
+                modulo = 2
+            end
+            if cone.tics % modulo == 0 then
+                local randr = P_RandomRange(50, 400)
+                local randx = P_RandomRange(-randr, randr)*FU
+                local randy = P_RandomRange(-randr, randr)*FU
+                local hail = P_SpawnMobjFromMobj(
+                    target,
+                    randx,
+                    randy,
+                    1500*FU,
+                    MT_CONEBALL_HAIL
+                )
+                hail.fuse = TICRATE*5
+                hail.momx = 3*target.momx/2 + -randx/80
+                hail.momy = 3*target.momy/2 + -randy/80
+                hail.momz = P_MobjFlip(target)*FU*-120
+                -- hail.spritexscale = $*2
+                -- hail.spriteyscale = $*2
+                hail.target = target
+            end
+            if cone.tics >= TICRATE*3 then
+                cone.phase = PHASE.DETRANSFORM
+            end
+        elseif cone.phase == PHASE.DETRANSFORM then
+            if pizza.state == S_CONEBALL then
+                cone.phase = PHASE.STAB
+                cone.tics = 0
+                pizza.momx = target.momx
+                pizza.momy = target.momy
+                pizza.momz = target.momz
+            elseif pizza.state ~= S_CONEBALL_DETRANSFORM then
+                pizza.state = S_CONEBALL_DETRANSFORM
+            end
+        elseif cone.phase == PHASE.STAB then
+            if pizza.state ~= S_CONEBALL_ATTACK then
+                if cone.tics >= (18*STABSPEED) then
+                    target.gettingConeballedOn = nil
+                    if not PTSR.timeover then
+                        PTSR.DoParry(target, pizza)
+                        -- pizza.momx = $*2
+                        -- pizza.momy = $*2
+                        -- pizza.momz = $*3
+                    end
+                else
+                    pizza.state = S_CONEBALL_ATTACK
+                end
+            end
+            if cone.tics >= (9*STABSPEED) and cone.tics < (18*STABSPEED) then
+                stabby(pizza)
+            end
+        end
 
 
-        if cone.tics < 150 then
-            local dist_mul = min(cone.tics * 4, 75)
-            if cone.tics > 75 then
-                local inv = 150 - cone.tics
-                dist_mul = min(inv * 4, 75)
+        if cone.phase ~= PHASE.STAB then
+            local dist_mul = max(0, min(cone.hoverdist, 75))
+            if cone.phase == PHASE.DETRANSFORM then
+                cone.hoverdist = max($-4, 0)
+            else
+                cone.hoverdist = min($+4, 75)
             end
             P_MoveOrigin(
                 pizza,
@@ -142,66 +224,16 @@ PTSR_AddHook("pfprestunthink", function (pizza)
             pizza.momy = 0
             pizza.momz = 0
         else
-            pizza.momx = 9*$/10
-            pizza.momy = 9*$/10
-            pizza.momz = 9*$/10
+            if PTSR.timeover then
+                pizza.momx = 95*$/100
+                pizza.momy = 95*$/100
+                pizza.momz = 95*$/100
+            else
+                pizza.momx = 9*$/10
+                pizza.momy = 9*$/10
+                pizza.momz = 9*$/10
+            end
         end
-        if cone.tics < 130 and pizza.state != S_CONEBALL_TRANSFORM and pizza.state != S_CONEBALL_PINK then
-            pizza.state = S_CONEBALL_TRANSFORM
-        end
-
-        -- hail
-        local modulo = 3
-        if PTSR.timeover then
-            modulo = 2
-        end
-        if cone.tics < 130 and cone.tics % modulo == 0 then
-            local randr = P_RandomRange(50, 400)
-            local randx = P_RandomRange(-randr, randr)*FU
-            local randy = P_RandomRange(-randr, randr)*FU
-            local hail = P_SpawnMobjFromMobj(
-                target,
-                randx,
-                randy,
-                1500*FU,
-                MT_CONEBALL_HAIL
-            )
-            hail.fuse = TICRATE*5
-            hail.momx = 3*target.momx/2 + -randx/80
-            hail.momy = 3*target.momy/2 + -randy/80
-            hail.momz = P_MobjFlip(target)*FU*-120
-            -- hail.spritexscale = $*2
-            -- hail.spriteyscale = $*2
-            hail.target = target
-        end
-        -- unpink
-        if cone.tics == 130 then
-            pizza.state = S_CONEBALL_DETRANSFORM
-            pizza.momx = target.momx
-            pizza.momy = target.momy
-            pizza.momz = target.momz
-        end
-
-        -- stabby
-        if cone.tics == 150 then
-            pizza.state = S_CONEBALL_ATTACK
-            pizza.momx = target.momx
-            pizza.momy = target.momy
-            pizza.momz = target.momz
-        end
-
-        if cone.tics >= (150+9*STABSPEED) and cone.tics < (150+18*STABSPEED) then
-            stabby(pizza)
-        end
-
-        if cone.tics > 155 and pizza.state != S_CONEBALL_ATTACK then
-            target.gettingConeballedOn = nil
-            PTSR.DoParry(target, pizza)
-            pizza.momx = $*2
-            pizza.momy = $*2
-            pizza.momz = $*3
-        end
-
         return true
     elseif isConeball(pizza) then
         pizza.pfspeedmulti = 5*FU/3
@@ -292,6 +324,64 @@ addHook("PlayerThink", function (p)
 
         if leveltime % 7 == 0 or p.mo.coneballIcecreamed > SOFTMAXICECREAM then
             p.mo.coneballIcecreamed = $ - 1
+        end
+    end
+end)
+
+local dots = {}
+local dotplayer = nil
+
+local hudf = function (v, p)
+    if not #dots then return end
+    --[[@type videolib]]
+    local vv = v
+    for _,dot in ipairs(dots) do
+        local dotpatch = vv.getSpritePatch(SPR_CONB, Z+11+G, 0, dot.a)
+        local dist = R_PointToDist2(dot.x, dot.y, 160*FU, 100*FU)
+        local flags = 0
+        if dist < 40*FU then
+            flags = V_70TRANS
+        elseif dist < 75*FU then
+            flags = V_50TRANS
+        elseif dist < 110*FU then
+            flags = V_20TRANS
+        end
+        vv.drawScaled(dot.x, dot.y, FU, dotpatch, flags)
+    end
+end
+customhud.SetupItem("PTSR_coneball_icecream", ptsr_hudmodname, hudf, "game", 3)
+
+addHook("ThinkFrame", function ()
+    if displayplayer ~= dotplayer then
+        dots = {}
+        dotplayer = displayplayer
+    end
+    local dotcount = 2*displayplayer.mo.coneballIcecreamed/3
+    local keepdots = {}
+    for _,dot in ipairs(dots) do
+        dot.y = $ + dot.vy
+        dot.time = $ - 1
+        if dotcount > #dots then
+            dot.time = $ - 1
+        end
+        if dot.time < 0 then
+            dot.y = $ - dot.time*2*dot.vy
+        end
+        if dot.y < 205*FU then
+            table.insert(keepdots, dot)
+        end
+    end
+    dots = keepdots
+    if #dots < dotcount then
+        for i=#dots,dotcount-1 do
+            local newdot = {
+                x = P_RandomRange(0, 320)*FU,
+                y = P_RandomRange(0, 100)*FU,
+                vy = P_RandomRange(70, 160)*FU/100,
+                time = P_RandomRange(TICRATE, TICRATE*2),
+                a = P_RandomRange(-35, 35)*ANG1
+            }
+            table.insert(dots, newdot)
         end
     end
 end)
