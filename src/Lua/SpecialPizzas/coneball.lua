@@ -142,7 +142,7 @@ PTSR_AddHook("pfprestunthink", function (pizza)
             end
         end
         cone.tics = $ + 1
-        print(cone.phase)
+        -- print(cone.phase)
         if cone.phase == PHASE.TRANSFORM then
             if pizza.state == S_CONEBALL_PINK then
                 cone.phase = PHASE.HAIL
@@ -280,7 +280,13 @@ local MAXICECREAM = 75
 local SOFTMAXICECREAM = 50
 local MAXSLOW = 8*FU/100
 addHook("TouchSpecial", function (special, toucher)
-    toucher.coneballIcecreamed = min(($ or 0)+2, MAXICECREAM)
+    local add = 2
+    if not special.hailLanded then
+        add = $ * 5
+    elseif PTSR.timeover then
+        add = 3 * $/2
+    end
+    toucher.coneballIcecreamed = min(($ or 0)+add, MAXICECREAM)
     -- if toucher.player and toucher.player.valid
     --     and not special.hailLanded
     --     and not P_PlayerInPain(toucher.player)
@@ -302,7 +308,7 @@ addHook("PlayerThink", function (p)
         end
 
         local mult = FU - (p.mo.coneballIcecreamed*MAXSLOW/MAXICECREAM)
-        print(p.mo.coneballIcecreamed .. " icecream")
+        -- print(p.mo.coneballIcecreamed .. " icecream")
         p.mo.momx = FixedMul($, mult)
         p.mo.momy = FixedMul($, mult)
         -- p.mo.momz = FixedMul($, mult) -- this feels weird and also breaks springs
