@@ -31,7 +31,7 @@ states[S_CONEBALL_PARTICLE] = {
 
 local STABSPEED = 1
 
-freeslot("SPR_CONA", "S_CONEBALL_PINK", "S_CONEBALL_TRANSFORM", "S_CONEBALL_ATTACK")
+freeslot("SPR_CONA", "S_CONEBALL_PINK", "S_CONEBALL_TRANSFORM", "S_CONEBALL_ATTACK", "S_CONEBALL_DETRANSFORM")
 states[S_CONEBALL_TRANSFORM] = {
     sprite = SPR_CONB,
     frame = FF_ANIMATE|FF_FULLBRIGHT|(Z+1+5),
@@ -54,6 +54,14 @@ states[S_CONEBALL_ATTACK] = {
     tics = 26*STABSPEED,
     var1 = Z+1,
     var2 = STABSPEED,
+    nextstate = S_CONEBALL
+}
+states[S_CONEBALL_DETRANSFORM] = {
+    sprite = SPR_CONA,
+    frame = FF_ANIMATE|FF_FULLBRIGHT|(Z+2),
+    tics = 18,
+    var1 = 9,
+    var2 = 2,
     nextstate = S_CONEBALL
 }
 
@@ -117,9 +125,6 @@ PTSR_AddHook("pfprestunthink", function (pizza)
         local cone = target.gettingConeballedOn
         cone.tics = $ + 1
 
-        pizza.momx = 0
-        pizza.momy = 0
-        pizza.momz = 0
 
         if cone.tics < 150 then
             local dist_mul = min(cone.tics * 4, 75)
@@ -133,9 +138,16 @@ PTSR_AddHook("pfprestunthink", function (pizza)
                 target.y + cos(leveltime*ANG2*2)*dist_mul,
                 target.z
             )
-            if pizza.state != S_CONEBALL_TRANSFORM and pizza.state != S_CONEBALL_PINK then
-                pizza.state = S_CONEBALL_TRANSFORM
-            end
+            pizza.momx = 0
+            pizza.momy = 0
+            pizza.momz = 0
+        else
+            pizza.momx = 9*$/10
+            pizza.momy = 9*$/10
+            pizza.momz = 9*$/10
+        end
+        if cone.tics < 130 and pizza.state != S_CONEBALL_TRANSFORM and pizza.state != S_CONEBALL_PINK then
+            pizza.state = S_CONEBALL_TRANSFORM
         end
 
         -- hail
@@ -143,7 +155,7 @@ PTSR_AddHook("pfprestunthink", function (pizza)
         if PTSR.timeover then
             modulo = 2
         end
-        if cone.tics < 120 and cone.tics % modulo == 0 then
+        if cone.tics < 130 and cone.tics % modulo == 0 then
             local randr = P_RandomRange(50, 400)
             local randx = P_RandomRange(-randr, randr)*FU
             local randy = P_RandomRange(-randr, randr)*FU
@@ -162,10 +174,20 @@ PTSR_AddHook("pfprestunthink", function (pizza)
             -- hail.spriteyscale = $*2
             hail.target = target
         end
+        -- unpink
+        if cone.tics == 130 then
+            pizza.state = S_CONEBALL_DETRANSFORM
+            pizza.momx = target.momx
+            pizza.momy = target.momy
+            pizza.momz = target.momz
+        end
 
         -- stabby
         if cone.tics == 150 then
             pizza.state = S_CONEBALL_ATTACK
+            pizza.momx = target.momx
+            pizza.momy = target.momy
+            pizza.momz = target.momz
         end
 
         if cone.tics >= (150+9*STABSPEED) and cone.tics < (150+18*STABSPEED) then
@@ -227,6 +249,12 @@ local SOFTMAXICECREAM = 50
 local MAXSLOW = 8*FU/100
 addHook("TouchSpecial", function (special, toucher)
     toucher.coneballIcecreamed = min(($ or 0)+2, MAXICECREAM)
+    -- if toucher.player and toucher.player.valid
+    --     and not special.hailLanded
+    --     and not P_PlayerInPain(toucher.player)
+    -- then
+    --     P_DamageMobj(toucher, special, special)
+    -- end
     return true
 end, MT_CONEBALL_HAIL)
 
