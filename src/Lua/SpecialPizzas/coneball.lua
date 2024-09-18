@@ -90,6 +90,11 @@ end
 
 PTSR_AddHook("pfpredamage", function (playermo, pizza)
     if isConeball(pizza) then
+        -- do this here manually to avoid the invuln condition
+		if playermo.player.powers[pw_shield] & SH_FORCE then
+			PTSR:ForceShieldParry(playermo, pizza)
+			return true
+		end
         if not playermo.gettingConeballedOn then
             playermo.gettingConeballedOn = {
                 pizza = pizza,
@@ -111,17 +116,25 @@ PTSR_AddHook("preparry", function (playermo, pizza)
 end)
 
 local function stabby(pizza)
-    if CV_PTSR.nuhuh.value then return end
     for p in players.iterate do
+        print(R_PointToDist2(
+            R_PointToDist2(p.mo.x, p.mo.y, pizza.x, pizza.y), p.mo.z+p.mo.height/2,
+            0, pizza.z+pizza.height/2
+        )/FU)
         if (
             p and p.valid and p.mo and p.mo.valid
             and PTSR.PlayerIsChasable(p)
+            and not p.powers[pw_invulnerability]
             and R_PointToDist2(
                 R_PointToDist2(p.mo.x, p.mo.y, pizza.x, pizza.y), p.mo.z+p.mo.height/2,
                 0, pizza.z+pizza.height/2
-            ) < 92*FU
+            ) < 109*FU
         ) then
-            P_KillMobj(p.mo, pizza)
+            if CV_PTSR.nuhuh.value then
+                S_StartSound(p.mo, sfx_spkdth)
+            else
+                P_KillMobj(p.mo, pizza)
+            end
         end
     end
 end
@@ -160,16 +173,22 @@ PTSR_AddHook("pfprestunthink", function (pizza)
                 local randx = P_RandomRange(-randr, randr)*FU
                 local randy = P_RandomRange(-randr, randr)*FU
                 local hail = P_SpawnMobjFromMobj(
-                    target,
-                    randx,
-                    randy,
-                    1500*FU,
+                    -- target,
+                    -- -randx,
+                    -- -randy,
+                    -- 1500*FU,
+                    pizza,
+                    0,
+                    0,
+                    3*pizza.height/4,
                     MT_CONEBALL_HAIL
                 )
                 hail.fuse = TICRATE*5
-                hail.momx = 3*target.momx/2 + -randx/80
-                hail.momy = 3*target.momy/2 + -randy/80
-                hail.momz = P_MobjFlip(target)*FU*-120
+                -- hail.momx = 3*target.momx/2 + -randx/80
+                -- hail.momy = 3*target.momy/2 + -randy/80
+                hail.momx = 9*target.momx/8 + randx/45
+                hail.momy = 9*target.momy/8 + randy/45
+                hail.momz = 9*target.momz/8 + P_RandomRange(-10,30)*FU/10
                 -- hail.spritexscale = $*2
                 -- hail.spriteyscale = $*2
                 hail.target = target
@@ -218,7 +237,7 @@ PTSR_AddHook("pfprestunthink", function (pizza)
                 pizza,
                 target.x + sin(leveltime*ANG2*2)*dist_mul,
                 target.y + cos(leveltime*ANG2*2)*dist_mul,
-                target.z
+                target.z + dist_mul*FU*P_MobjFlip(target)
             )
             pizza.momx = 0
             pizza.momy = 0
@@ -262,6 +281,11 @@ addHook("MobjThinker", function (mo)
         if abs(floor - mo.z) < abs(mo.momz*2) then
             mo.flags = $ & ~MF_NOCLIPHEIGHT
         end
+        if mo.momz * P_MobjFlip(mo) > 0 then
+            mo.renderflags = $ | RF_VERTICALFLIP
+        else
+            mo.renderflags = $ & ~RF_VERTICALFLIP
+        end
     elseif not mo.hailLanded then
         if P_IsObjectOnGround(mo) then
             mo.momx = 0
@@ -269,6 +293,7 @@ addHook("MobjThinker", function (mo)
             mo.momz = 0
             mo.state = S_CONEBALL_HAIL_LAND
             mo.hailLanded = true
+            mo.renderflags = $ & ~RF_VERTICALFLIP
         end
     elseif mo.fuse == 20 then
         mo.flags = $ | MF_NOCLIPHEIGHT
@@ -276,15 +301,19 @@ addHook("MobjThinker", function (mo)
     end
 end, MT_CONEBALL_HAIL)
 
-local MAXICECREAM = 75
-local SOFTMAXICECREAM = 50
-local MAXSLOW = 8*FU/100
+local MAXICECREAM = 75*FU
+local SOFTMAXICECREAM = 50*FU
+local MAXSLOW = 64*FU/1000
 addHook("TouchSpecial", function (special, toucher)
-    local add = 2
-    if not special.hailLanded then
-        add = $ * 5
-    elseif PTSR.timeover then
-        add = 3 * $/2
+    local add = 2*FU
+    -- if not special.hailLanded and not P_IsObjectOnGround(toucher) then
+    --     add = $ * 4
+    -- else
+    if PTSR.timeover then
+        add = 3*$/2
+    end
+    if toucher.player and toucher.player.speed > 16*FU then
+        add = FixedMul($, toucher.player.speed/16)
     end
     toucher.coneballIcecreamed = min(($ or 0)+add, MAXICECREAM)
     -- if toucher.player and toucher.player.valid
@@ -299,6 +328,16 @@ end, MT_CONEBALL_HAIL)
 addHook("PlayerThink", function (p)
     if (
         p.valid and p.mo and p.mo.valid
+        and p.mo.gettingConeballedOn
+    ) then
+        local ballin = p.mo.gettingConeballedOn
+        if ballin.pizza and ballin.pizza.valid and ballin.pizza.pizza_target ~= p.mo then
+            -- we have a bogus coneball data
+            p.mo.gettingConeballedOn = nil
+        end
+    end
+    if (
+        p.valid and p.mo and p.mo.valid
         and p.mo.coneballIcecreamed
         and p.mo.coneballIcecreamed > 0
     ) then
@@ -307,13 +346,16 @@ addHook("PlayerThink", function (p)
             return
         end
 
-        local mult = FU - (p.mo.coneballIcecreamed*MAXSLOW/MAXICECREAM)
+        -- print(p.mo.coneballIcecreamed/FU)
+
+        local mult = FU - FixedMul(FixedDiv(p.mo.coneballIcecreamed, MAXICECREAM), MAXSLOW)
         -- print(p.mo.coneballIcecreamed .. " icecream")
         p.mo.momx = FixedMul($, mult)
         p.mo.momy = FixedMul($, mult)
+        -- print(1000*mult/FU)
         -- p.mo.momz = FixedMul($, mult) -- this feels weird and also breaks springs
 
-        local c = P_RandomRange(1, p.mo.coneballIcecreamed)/5
+        local c = P_RandomRange(1, p.mo.coneballIcecreamed)*3/MAXICECREAM
         local rdfu = p.mo.radius/p.mo.scale
         for i = 1,c do
             local particle = P_SpawnMobjFromMobj(
@@ -327,9 +369,13 @@ addHook("PlayerThink", function (p)
             particle.fuse = -1
             particle.flags = $ & ~MF_NOGRAVITY
         end
-
-        if leveltime % 7 == 0 or p.mo.coneballIcecreamed > SOFTMAXICECREAM then
-            p.mo.coneballIcecreamed = $ - 1
+        -- if true then return end
+        p.mo.coneballIcecreamed = max(0, $ - FU/12)
+        if p.mo.coneballIcecreamed > SOFTMAXICECREAM then
+            p.mo.coneballIcecreamed = max(0, $ - FU)
+        end
+        if p.powers[pw_invulnerability] then
+            p.mo.coneballIcecreamed = max(0, $ - FU*10)
         end
     end
 end)
@@ -337,10 +383,33 @@ end)
 local dots = {}
 local dotplayer = nil
 
+local function getDotCount()
+    if
+        displayplayer and displayplayer.mo and displayplayer.mo.valid
+        and displayplayer.mo.coneballIcecreamed
+    then
+        return 50*displayplayer.mo.coneballIcecreamed/MAXICECREAM
+    end
+    return 0
+end
+
 local hudf = function (v, p)
-    if not #dots then return end
     --[[@type videolib]]
     local vv = v
+    local dotcount = getDotCount()
+    if #dots < dotcount then
+        for i=#dots,dotcount-1 do
+            local newdot = {
+                x = vv.RandomRange(0, 320)*FU,
+                y = vv.RandomRange(0, 100)*FU,
+                vy = vv.RandomRange(70, 160)*FU/100,
+                time = vv.RandomRange(TICRATE, TICRATE*2),
+                a = vv.RandomRange(-35, 35)*ANG1
+            }
+            table.insert(dots, newdot)
+        end
+    end
+    if not #dots then return end
     for _,dot in ipairs(dots) do
         local dotpatch = vv.getSpritePatch(SPR_CONB, Z+11+G, 0, dot.a)
         local dist = R_PointToDist2(dot.x, dot.y, 160*FU, 100*FU)
@@ -362,7 +431,7 @@ addHook("ThinkFrame", function ()
         dots = {}
         dotplayer = displayplayer
     end
-    local dotcount = 2*displayplayer.mo.coneballIcecreamed/3
+    local dotcount = getDotCount()
     local keepdots = {}
     for _,dot in ipairs(dots) do
         dot.y = $ + dot.vy
@@ -378,16 +447,4 @@ addHook("ThinkFrame", function ()
         end
     end
     dots = keepdots
-    if #dots < dotcount then
-        for i=#dots,dotcount-1 do
-            local newdot = {
-                x = P_RandomRange(0, 320)*FU,
-                y = P_RandomRange(0, 100)*FU,
-                vy = P_RandomRange(70, 160)*FU/100,
-                time = P_RandomRange(TICRATE, TICRATE*2),
-                a = P_RandomRange(-35, 35)*ANG1
-            }
-            table.insert(dots, newdot)
-        end
-    end
 end)
