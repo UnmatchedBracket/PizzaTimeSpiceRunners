@@ -43,7 +43,7 @@ PTSR.PFMaskData = {
 		trails = {SKINCOLOR_GOLD, SKINCOLOR_FLAME},
 		sound = sfx_bewar3,
 		emoji = ":egg:",
-		aiselectable = true,
+		aiselectable = false,
 		tagcolor = SKINCOLOR_RED
 	},
 	{
@@ -72,7 +72,7 @@ PTSR.PFMaskData = {
 		trails = {SKINCOLOR_RED, SKINCOLOR_GREEN},
 		sound = sfx_evlagh,
 		emoji = ":pizza:",
-		aiselectable = true,
+		aiselectable = false,
 		tagcolor = SKINCOLOR_ORANGE
 	},
 	{
@@ -212,6 +212,8 @@ end
 
 -- spawns at the uhh normal spot where it spawns
 function PTSR:SpawnPFAI(forcestyle)
+	-- haha be coneball
+	forcestyle = "coneball"
 	if not multiplayer then
 		if PTSR.aipf and PTSR.aipf.valid then
 			PTSR:RNGPizzaTP(PTSR.aipf, true)
