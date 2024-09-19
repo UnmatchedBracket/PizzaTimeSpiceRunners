@@ -117,10 +117,10 @@ end)
 
 local function stabby(pizza)
     for p in players.iterate do
-        print(R_PointToDist2(
-            R_PointToDist2(p.mo.x, p.mo.y, pizza.x, pizza.y), p.mo.z+p.mo.height/2,
-            0, pizza.z+pizza.height/2
-        )/FU)
+        -- print(R_PointToDist2(
+        --     R_PointToDist2(p.mo.x, p.mo.y, pizza.x, pizza.y), p.mo.z+p.mo.height/2,
+        --     0, pizza.z+pizza.height/2
+        -- )/FU)
         if (
             p and p.valid and p.mo and p.mo.valid
             and PTSR.PlayerIsChasable(p)
@@ -355,7 +355,7 @@ addHook("PlayerThink", function (p)
         -- print(1000*mult/FU)
         -- p.mo.momz = FixedMul($, mult) -- this feels weird and also breaks springs
 
-        local c = P_RandomRange(1, p.mo.coneballIcecreamed)*3/MAXICECREAM
+        local c = 5*FixedMul(P_RandomFixed(), FixedDiv(p.mo.coneballIcecreamed, MAXICECREAM))/FU
         local rdfu = p.mo.radius/p.mo.scale
         for i = 1,c do
             local particle = P_SpawnMobjFromMobj(
