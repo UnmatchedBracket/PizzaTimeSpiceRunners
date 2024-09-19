@@ -211,8 +211,6 @@ end
 
 -- spawns at the uhh normal spot where it spawns
 function PTSR:SpawnPFAI(forcestyle)
-	-- haha be coneball
-	forcestyle = "coneball"
 	if not multiplayer then
 		if PTSR.aipf and PTSR.aipf.valid then
 			PTSR:RNGPizzaTP(PTSR.aipf, true)
